@@ -24,24 +24,33 @@ def estrai_email(sp):
 
 
 def estrai_indirizzo(sp):
-    indirizzo_tag = sp.select_one("div.address p")
-    if not indirizzo_tag:
+    # Cerca il div contenente la classe "address"
+    contenitore = sp.select_one("div.address")
+    if not contenitore:
         return ""
 
-    lines = []
-    for elem in indirizzo_tag.children:
-        if isinstance(elem, str):
-            text = elem.strip()
-            if text:
-                lines.append(text)
-        elif elem.name == "br":
+    # Trova il tag <p> all'interno del contenitore
+    p_tag = contenitore.find("p")
+    if not p_tag:
+        return ""
+
+    # Estrae il testo separando le righe in base ai <br>
+    righe = [line.strip() for line in p_tag.get_text(separator="\n").split("\n") if line.strip()]
+
+    # Filtra le righe escludendo quelle che contengono dati non inerenti all'indirizzo
+    righe_indirizzo = []
+    for riga in righe:
+        # Escludiamo la riga se contiene:
+        # - Il simbolo "@" (email)
+        # - Il prefisso telefonico "+41" oppure "Tel"
+        # - Un indirizzo web (ad es. inizia con "www" o "http")
+        if ("@" in riga) or ("+41" in riga) or riga.lower().startswith("tel") or riga.lower().startswith(
+                "www") or riga.lower().startswith("http"):
             continue
-        else:
+        righe_indirizzo.append(riga)
 
-            break
-
-    lines = [line for line in lines if line and not line.startswith("+41")]
-    return ", ".join(lines)
+    # Ritorna le righe dell'indirizzo separate da una virgola (puoi modificare il separatore a seconda delle tue esigenze)
+    return ", ".join(righe_indirizzo)
 
 
 def estrai_telefono(sp):
@@ -89,11 +98,11 @@ while True:
     soup = BeautifulSoup(driver.page_source, "html.parser")
     cards = soup.select("a.item[href^='/ch/bars/']")
     if not cards:
-        print("✅ Nessun altro locale trovato. Fine.")
+        print("✅ Nessun altro ristorante trovato. Fine.")
         break
 
     links = list(set("https://www.falstaff.com" + card["href"] for card in cards))
-    print(f"🔗 {len(links)} locali trovati nella pagina {page}")
+    print(f"🔗 {len(links)} ristoranti trovati nella pagina {page}")
 
     for i, link in enumerate(links, start=1):
         try:
@@ -120,4 +129,4 @@ while True:
     page += 1
 
 driver.quit()
-print(f"✅ Scraping completato. Totale locali: {totale}")
+print(f"✅ Scraping completato. Totale ristoranti: {totale}")
