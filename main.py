@@ -5,9 +5,10 @@ from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 import time
-import csv
 import random
 import os
+import pandas as pd
+
 def wait_random():
     time.sleep(random.uniform(2.5, 4.5))
 
@@ -62,13 +63,12 @@ def estrai_sito(sp):
 options = ChromeOptions()
 options.add_argument(
     "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+
 driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
-output_file = "falstaff_bars.csv"
-if not os.path.exists(output_file):
-    with open(output_file, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Nome", "Indirizzo", "Telefono", "Email", "Sito Web"])
+output_file = "falstaff_bars.xlsx"
+
+data = []
 
 page = 1
 totale = 0
@@ -86,7 +86,7 @@ while True:
     soup = BeautifulSoup(driver.page_source, "html.parser")
     cards = soup.select("a.item[href^='/ch/bars/']")
     if not cards:
-        print("✅ Nessun altro ristorante trovato. Fine.")
+        print("✅ Nessun altro bar trovato. Fine.")
         break
 
     links = list(set("https://www.falstaff.com" + card["href"] for card in cards))
@@ -104,9 +104,14 @@ while True:
             email = estrai_email(sp)
             sito = estrai_sito(sp)
 
-            with open(output_file, "a", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow([nome, indirizzo, telefono, email, sito])
+            data.append({
+                "Nome": nome,
+                "Indirizzo": indirizzo,
+                "Telefono": telefono,
+                "Email": email,
+                "Sito Web": sito,
+                "Link": link
+            })
             totale += 1
             print(f"✓ {totale} | {nome}")
 
@@ -117,4 +122,7 @@ while True:
     page += 1
 
 driver.quit()
+df = pd.DataFrame(data)
+df.to_excel(output_file, index=False)
 print(f"✅ Scraping completato. Totale BAR: {totale}")
+print(f"Dati salvati in {output_file}")
